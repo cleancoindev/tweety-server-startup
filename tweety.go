@@ -2,13 +2,73 @@ package main
 
 import (
 	"fmt"
+	"github.com/garyburd/go-oauth/oauth"
 	"io/ioutil"
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 )
+
+type Tweet struct {
+	Text       string
+	Identifier string `json:"id_str"`
+	Source     string
+	CreatedAt  string `json:"created_at"`
+	User       struct {
+		Name            string
+		ScreenName      string `json:"screen_name"`
+		FollowersCount  int    `json:"followers_count"`
+		ProfileImageURL string `json:"profile_image_url"`
+	}
+	Place *struct {
+		Id       string
+		FullName string `json:"full_name"`
+	}
+	Entities struct {
+		HashTags []struct {
+			Indices [2]int
+			Text    string
+		}
+		UserMentions []struct {
+			Indices    [2]int
+			ScreenName string `json:"screen_name"`
+		} `json:"user_mentions"`
+		Urls []struct {
+			Indices [2]int
+			Url     string
+		}
+	}
+}
+
+var oauthClient = oauth.Client{
+	TemporaryCredentialRequestURI: "https://api.twitter.com/oauth/request_token",
+	ResourceOwnerAuthorizationURI: "https://api.twitter.com/oauth/authenticate",
+	TokenRequestURI:               "https://api.twitter.com/oauth/access_token",
+}
+
+func postTweet(token *oauth.Credentials, msg string) error {
+	url_ := "https://api.twitter.com/1.1/statuses/update.json"
+	opt := map[string]string{"status": msg}
+	param := make(url.Values)
+	for k, v := range opt {
+		param.Set(k, v)
+	}
+	oauthClient.SignParam(token, "POST", url_, param)
+	res, err := http.PostForm(url_, url.Values(param))
+	if err != nil {
+		log.Println("failed to post tweet:", err)
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 200 {
+		log.Println("failed to get timeline:", err)
+		return err
+	}
+	return nil
+}
 
 func filter(s []string, fn func(string) bool) []string {
 	var p []string // == nil
@@ -59,5 +119,10 @@ func get_hostname_and_ips() (string, string) {
 
 func main() {
 	hostname, ip_addresses := get_hostname_and_ips()
-	fmt.Printf("%s just woke up at %s #morning #ip", hostname, ip_addresses)
+	msg := fmt.Sprintf("%s just woke up at %s #TweetyServerStartup", hostname, ip_addresses)
+
+	oauthClient.Credentials.Token = "TOKEN"
+	oauthClient.Credentials.Secret = "SECRET"
+	token := &oauth.Credentials{"SECRET", "TOKEN"}
+	postTweet(token, msg)
 }
