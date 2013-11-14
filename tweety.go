@@ -1,7 +1,7 @@
 package main
 
 import (
-	"bitbucket.org/kardianos/service"
+	"github.com/thatha/go-service"
 	"fmt"
 	"github.com/thatha/tweety-server-startup/reusable"
 	"log"
